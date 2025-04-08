@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>RetroCloud</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <h1>RetroCloud File Explorer</h1>
+
+    <form id="uploadForm" enctype="multipart/form-data">
+        <input type="file" name="file" id="fileInput" multiple>
+        <button type="submit">Upload</button>
+    </form>
+
+    <div id="file-list"></div>
+
+    <script>
+        let currentPath = "";
+
+        function fetchFiles(path = "") {
+            fetch(`/browse?path=${path}`)
+                .then(response => response.json())
+                .then(data => {
+                    currentPath = data.current_path;
+                    const container = document.getElementById("file-list");
+                    container.innerHTML = `<h3>Path: /${currentPath}</h3>`;
+                    data.contents.forEach(item => {
+                        const el = document.createElement("div");
+                        el.className = "item";
+                        el.innerHTML = item.is_dir
+                            ? `📁 <a href="#" onclick="fetchFiles('${item.path}')">${item.name}</a>`
+                            : `📄 <a href="/download?path=${item.path}">${item.name}</a>`;
+                        container.appendChild(el);
+                    });
+                });
+        }
+
+        document.getElementById("uploadForm").addEventListener("submit", function(e) {
+            e.preventDefault();
+            const input = document.getElementById("fileInput");
+            const formData = new FormData();
+            for (let file of input.files) {
+                formData.append("file", file);
+            }
+            fetch("/upload", {
+                method: "POST",
+                body: formData
+            }).then(() => {
+                fetchFiles(currentPath);  // Refresh file list
+                input.value = "";         // Reset file input
+            });
+        });
+
+        fetchFiles();
+    </script>
+</body>
+</html>
