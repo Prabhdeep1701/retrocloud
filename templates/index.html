@@ -2,57 +2,506 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>RetroCloud</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <title>Retro Cloud</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 <body>
-    <h1>RetroCloud File Explorer</h1>
+    <header>
+        <div class="logo">
+            <i class="fas fa-cloud"></i>
+            <h1>Retro Cloud</h1>
+        </div>
+        <div class="search-container">
+            <i class="fas fa-search search-icon"></i>
+            <input type="text" id="searchInput" placeholder="Search in drive...">
+        </div>
+        <div class="header-actions">
+            <button id="toggleView" title="Toggle view"><i class="fas fa-th-list"></i></button>
+            <button id="toggleTheme" title="Toggle dark mode"><i class="fas fa-moon"></i></button>
+        </div>
+    </header>
 
-    <form id="uploadForm" enctype="multipart/form-data">
-        <input type="file" name="file" id="fileInput" multiple>
-        <button type="submit">Upload</button>
-    </form>
+    <div class="main-container">
+        <nav class="sidebar">
+            <div class="nav-item active" onclick="fetchFiles('')">
+                <i class="fas fa-home"></i>
+                <span>My Drive</span>
+            </div>
+            <div class="nav-item" onclick="showRecent()">
+                <i class="fas fa-clock"></i>
+                <span>Recent</span>
+            </div>
+            <div class="nav-item" onclick="showStarred()">
+                <i class="fas fa-star"></i>
+                <span>Starred</span>
+            </div>
+            <div class="nav-item" onclick="showTrash()">
+                <i class="fas fa-trash"></i>
+                <span>Trash</span>
+            </div>
+            <div class="storage-info">
+                <div class="storage-bar">
+                    <div class="storage-used" id="storageUsed"></div>
+                </div>
+                <div class="storage-text" id="storageText">Calculating storage...</div>
+            </div>
+        </nav>
 
-    <div id="file-list"></div>
+        <main class="content">
+            <div class="toolbar">
+                <form id="uploadForm" enctype="multipart/form-data">
+                    <input type="file" name="file" id="fileInput" multiple style="display: none;">
+                    <button type="button" class="upload-btn" onclick="document.getElementById('fileInput').click()">
+                        <i class="fas fa-plus"></i> New
+                    </button>
+                </form>
+                <div class="view-options">
+                    <button id="createFolder" title="Create folder"><i class="fas fa-folder-plus"></i></button>
+                    <button id="sortFiles" title="Sort files"><i class="fas fa-sort"></i></button>
+                </div>
+            </div>
+
+            <div id="path-nav" class="path-nav"></div>
+            
+            <div id="file-list" class="file-list grid-view"></div>
+        </main>
+    </div>
+
+    <div id="file-preview" class="file-preview">
+        <div class="preview-header">
+            <h3 id="preview-filename">File Preview</h3>
+            <button id="close-preview"><i class="fas fa-times"></i></button>
+        </div>
+        <div id="preview-content"></div>
+    </div>
+
+    <div id="context-menu" class="context-menu">
+        <div class="menu-item" id="menu-download"><i class="fas fa-download"></i> Download</div>
+        <div class="menu-item" id="menu-rename"><i class="fas fa-edit"></i> Rename</div>
+        <div class="menu-item" id="menu-star"><i class="fas fa-star"></i> Star</div>
+        <div class="menu-item" id="menu-delete"><i class="fas fa-trash"></i> Delete</div>
+    </div>
 
     <script>
+        // Global variables
         let currentPath = "";
+        let currentView = "grid";
+        let isDarkMode = false;
+        let selectedFile = null;
+        
+        // Initialize the app
+        document.addEventListener('DOMContentLoaded', function() {
+            fetchFiles();
+            setupEventListeners();
+            checkDarkModePreference();
+            calculateStorage();
+        });
 
-        function fetchFiles(path = "") {
-            fetch(`/browse?path=${path}`)
+        // Setup event listeners
+        function setupEventListeners() {
+            // Toggle view (grid/list)
+            document.getElementById('toggleView').addEventListener('click', function() {
+                const fileList = document.getElementById('file-list');
+                if (currentView === 'grid') {
+                    fileList.classList.remove('grid-view');
+                    fileList.classList.add('list-view');
+                    this.innerHTML = '<i class="fas fa-th"></i>';
+                    currentView = 'list';
+                } else {
+                    fileList.classList.remove('list-view');
+                    fileList.classList.add('grid-view');
+                    this.innerHTML = '<i class="fas fa-th-list"></i>';
+                    currentView = 'grid';
+                }
+            });
+
+            // Toggle dark mode
+            document.getElementById('toggleTheme').addEventListener('click', function() {
+                document.body.classList.toggle('dark-mode');
+                isDarkMode = document.body.classList.contains('dark-mode');
+                localStorage.setItem('darkMode', isDarkMode);
+                this.innerHTML = isDarkMode ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+            });
+
+            // File upload
+            document.getElementById('fileInput').addEventListener('change', function() {
+                if (this.files.length > 0) {
+                    const formData = new FormData();
+                    for (let file of this.files) {
+                        formData.append("file", file);
+                    }
+                    formData.append("current_path", currentPath);
+                    fetch("/upload", {
+                        method: "POST",
+                        body: formData
+                    }).then(() => {
+                        fetchFiles(currentPath);
+                        this.value = "";
+                        calculateStorage();
+                    });
+                }
+            });
+
+            // Search functionality
+            document.getElementById('searchInput').addEventListener('input', function() {
+                const searchTerm = this.value.toLowerCase();
+                const items = document.querySelectorAll('.item');
+                
+                items.forEach(item => {
+                    const fileName = item.querySelector('a').textContent.toLowerCase();
+                    if (fileName.includes(searchTerm)) {
+                        item.style.display = '';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+            });
+
+            // Close preview
+            document.getElementById('close-preview').addEventListener('click', function() {
+                document.getElementById('file-preview').style.display = 'none';
+            });
+
+            // Create folder
+            document.getElementById('createFolder').addEventListener('click', function() {
+                const folderName = prompt('Enter folder name:');
+                if (folderName) {
+                    fetch('/create-folder', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            path: currentPath,
+                            name: folderName
+                        })
+                    }).then(() => {
+                        fetchFiles(currentPath);
+                    });
+                }
+            });
+
+            // Sort files
+            document.getElementById('sortFiles').addEventListener('click', function() {
+                const items = Array.from(document.querySelectorAll('.item'));
+                const container = document.getElementById('file-list');
+                
+                items.sort((a, b) => {
+                    const aIsDir = a.querySelector('i').classList.contains('fa-folder');
+                    const bIsDir = b.querySelector('i').classList.contains('fa-folder');
+                    
+                    if (aIsDir && !bIsDir) return -1;
+                    if (!aIsDir && bIsDir) return 1;
+                    
+                    return a.querySelector('a').textContent.localeCompare(b.querySelector('a').textContent);
+                });
+                
+                container.innerHTML = '';
+                items.forEach(item => container.appendChild(item));
+            });
+
+            // Context menu
+            document.addEventListener('click', function() {
+                document.getElementById('context-menu').style.display = 'none';
+            });
+        }
+
+        // Check dark mode preference
+        function checkDarkModePreference() {
+            const darkMode = localStorage.getItem('darkMode');
+            if (darkMode === 'true') {
+                document.body.classList.add('dark-mode');
+                document.getElementById('toggleTheme').innerHTML = '<i class="fas fa-sun"></i>';
+                isDarkMode = true;
+            }
+        }
+
+        // Calculate storage usage
+        function calculateStorage() {
+            fetch('/storage-info')
                 .then(response => response.json())
                 .then(data => {
-                    currentPath = data.current_path;
-                    const container = document.getElementById("file-list");
-                    container.innerHTML = `<h3>Path: /${currentPath}</h3>`;
-                    data.contents.forEach(item => {
-                        const el = document.createElement("div");
-                        el.className = "item";
-                        el.innerHTML = item.is_dir
-                            ? `📁 <a href="#" onclick="fetchFiles('${item.path}')">${item.name}</a>`
-                            : `📄 <a href="/download?path=${item.path}">${item.name}</a>`;
-                        container.appendChild(el);
-                    });
+                    const usedPercent = (data.used / data.total) * 100;
+                    document.getElementById('storageUsed').style.width = `${usedPercent}%`;
+                    document.getElementById('storageText').textContent = 
+                        `${formatSize(data.used)} of ${formatSize(data.total)} used`;
                 });
         }
 
-        document.getElementById("uploadForm").addEventListener("submit", function(e) {
-            e.preventDefault();
-            const input = document.getElementById("fileInput");
-            const formData = new FormData();
-            for (let file of input.files) {
-                formData.append("file", file);
-            }
-            fetch("/upload", {
-                method: "POST",
-                body: formData
-            }).then(() => {
-                fetchFiles(currentPath);  // Refresh file list
-                input.value = "";         // Reset file input
-            });
-        });
+        // Format file size
+        function formatSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
 
-        fetchFiles();
+        // Fetch files function
+        function fetchFiles(path = "") {
+            fetch(`/browse?path=${encodeURIComponent(path)}`)
+                .then(response => response.json())
+                .then(data => {
+                    currentPath = data.current_path;
+                    
+                    // Update path navigation
+                    updatePathNavigation(currentPath);
+                    
+                    // Update file list
+                    const container = document.getElementById("file-list");
+                    container.innerHTML = '';
+                    
+                    // Add parent directory link if not at root
+                    if (currentPath && currentPath !== '.') {
+                        addParentDirectoryLink(container, currentPath);
+                    }
+                    
+                    // Add files and folders
+                    data.contents.forEach(item => {
+                        addFileOrFolderItem(container, item);
+                    });
+                })
+                .catch(error => {
+                    console.error("Error fetching files:", error);
+                    alert("Error loading files. Please try again.");
+                });
+        }
+
+        // Update path navigation
+        function updatePathNavigation(path) {
+            const pathNav = document.getElementById("path-nav");
+            let pathParts = path.split('/').filter(part => part);
+            let pathHtml = `<a href="#" onclick="fetchFiles('')">My Drive</a>`;
+            let currentPathBuild = "";
+            
+            for (let i = 0; i < pathParts.length; i++) {
+                currentPathBuild += pathParts[i] + "/";
+                pathHtml += ` / <a href="#" onclick="fetchFiles('${currentPathBuild}')">${pathParts[i]}</a>`;
+            }
+            
+            pathNav.innerHTML = pathHtml;
+        }
+
+        // Add parent directory link
+        function addParentDirectoryLink(container, path) {
+            const parentPath = path.split('/').slice(0, -1).join('/');
+            const parentEl = document.createElement("div");
+            parentEl.className = "item";
+            parentEl.innerHTML = `
+                <div class="item-icon"><i class="fas fa-arrow-up"></i></div>
+                <div class="item-details">
+                    <a href="#" onclick="fetchFiles('${parentPath}')">Parent Directory</a>
+                </div>
+            `;
+            container.appendChild(parentEl);
+        }
+
+        // Add file or folder item
+        function addFileOrFolderItem(container, item) {
+            const el = document.createElement("div");
+            el.className = "item";
+            
+            // Determine icon based on file type
+            let icon = '';
+            if (item.is_dir) {
+                icon = '<i class="fas fa-folder"></i>';
+            } else {
+                const ext = item.name.split('.').pop().toLowerCase();
+                if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) {
+                    icon = '<i class="fas fa-image"></i>';
+                } else if (['mp4', 'avi', 'mov'].includes(ext)) {
+                    icon = '<i class="fas fa-video"></i>';
+                } else if (['mp3', 'wav', 'ogg'].includes(ext)) {
+                    icon = '<i class="fas fa-music"></i>';
+                } else if (['pdf'].includes(ext)) {
+                    icon = '<i class="fas fa-file-pdf"></i>';
+                } else if (['doc', 'docx'].includes(ext)) {
+                    icon = '<i class="fas fa-file-word"></i>';
+                } else if (['xls', 'xlsx'].includes(ext)) {
+                    icon = '<i class="fas fa-file-excel"></i>';
+                } else if (['ppt', 'pptx'].includes(ext)) {
+                    icon = '<i class="fas fa-file-powerpoint"></i>';
+                } else if (['zip', 'rar', '7z'].includes(ext)) {
+                    icon = '<i class="fas fa-file-archive"></i>';
+                } else if (['txt', 'md'].includes(ext)) {
+                    icon = '<i class="fas fa-file-alt"></i>';
+                } else {
+                    icon = '<i class="fas fa-file"></i>';
+                }
+            }
+            
+            const link = item.is_dir
+                ? `<a href="#" onclick="fetchFiles('${item.path}')">${item.name}</a>`
+                : `<a href="#" onclick="previewFile('${item.path}', '${item.name}')">${item.name}</a>`;
+            
+            const actions = `
+                <div class="item-actions">
+                    ${!item.is_dir ? `
+                        <a href="/download?path=${item.path}" class="action-btn" title="Download">
+                            <i class="fas fa-download"></i>
+                        </a>
+                    ` : ''}
+                    <button class="action-btn star-btn" title="Star" onclick="toggleStar(this, event)">
+                        <i class="far fa-star"></i>
+                    </button>
+                    <button class="action-btn delete-btn" title="Delete" onclick="deleteFile('${item.path}', event)">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            `;
+            
+            el.innerHTML = `
+                <div class="item-icon">${icon}</div>
+                <div class="item-details">
+                    ${link}
+                    <div class="item-meta">Last modified: Today</div>
+                </div>
+                ${actions}
+            `;
+            
+            // Add context menu
+            el.addEventListener('contextmenu', function(e) {
+                e.preventDefault();
+                showContextMenu(e, item);
+            });
+            
+            container.appendChild(el);
+        }
+
+        // Show context menu
+        function showContextMenu(e, item) {
+            const menu = document.getElementById('context-menu');
+            menu.style.display = 'block';
+            menu.style.left = `${e.pageX}px`;
+            menu.style.top = `${e.pageY}px`;
+            
+            selectedFile = item;
+            
+            // Configure menu items based on file type
+            document.getElementById('menu-download').style.display = item.is_dir ? 'none' : 'block';
+            
+            // Set up menu actions
+            document.getElementById('menu-download').onclick = function() {
+                window.location.href = `/download?path=${item.path}`;
+            };
+            
+            document.getElementById('menu-delete').onclick = function() {
+                deleteFile(item.path);
+            };
+        }
+
+        // Preview file
+        function previewFile(path, name) {
+            const preview = document.getElementById('file-preview');
+            const previewContent = document.getElementById('preview-content');
+            const previewFilename = document.getElementById('preview-filename');
+            
+            previewFilename.textContent = name;
+            
+            const ext = name.split('.').pop().toLowerCase();
+            
+            if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) {
+                previewContent.innerHTML = `<img src="/download?path=${path}" alt="${name}">`;
+            } else if (['mp4', 'webm'].includes(ext)) {
+                previewContent.innerHTML = `
+                    <video controls>
+                        <source src="/download?path=${path}" type="video/${ext}">
+                        Your browser does not support video playback.
+                    </video>
+                `;
+            } else if (['mp3', 'wav'].includes(ext)) {
+                previewContent.innerHTML = `
+                    <audio controls>
+                        <source src="/download?path=${path}" type="audio/${ext}">
+                        Your browser does not support audio playback.
+                    </audio>
+                `;
+            } else if (['pdf'].includes(ext)) {
+                previewContent.innerHTML = `
+                    <iframe src="/download?path=${path}" width="100%" height="100%"></iframe>
+                `;
+            } else if (['txt', 'md', 'html', 'css', 'js'].includes(ext)) {
+                fetch(`/preview?path=${path}`)
+                    .then(response => response.text())
+                    .then(text => {
+                        previewContent.innerHTML = `<pre>${text}</pre>`;
+                    });
+            } else {
+                previewContent.innerHTML = `
+                    <div class="no-preview">
+                        <i class="fas fa-file fa-5x"></i>
+                        <p>No preview available for this file type</p>
+                        <a href="/download?path=${path}" class="download-btn">Download</a>
+                    </div>
+                `;
+            }
+            
+            preview.style.display = 'block';
+        }
+
+        // Toggle star
+        function toggleStar(btn, event) {
+            event.stopPropagation();
+            const icon = btn.querySelector('i');
+            if (icon.classList.contains('far')) {
+                icon.classList.remove('far');
+                icon.classList.add('fas');
+                icon.style.color = '#fbbc04';
+            } else {
+                icon.classList.remove('fas');
+                icon.classList.add('far');
+                icon.style.color = '';
+            }
+        }
+
+        // Delete file function
+        function deleteFile(path, event) {
+            if (event) event.stopPropagation();
+            if (confirm('Are you sure you want to delete this file?')) {
+                fetch(`/delete?path=${path}`, {
+                    method: 'DELETE'
+                }).then(response => {
+                    if (response.ok) {
+                        fetchFiles(currentPath);
+                        calculateStorage();
+                    }
+                });
+            }
+        }
+
+        // Show recent files
+        function showRecent() {
+            fetch('/recent')
+                .then(response => response.json())
+                .then(data => {
+                    const container = document.getElementById("file-list");
+                    container.innerHTML = '<h2>Recent Files</h2>';
+                    
+                    data.files.forEach(item => {
+                        addFileOrFolderItem(container, item);
+                    });
+                    
+                    document.querySelectorAll('.nav-item').forEach(item => {
+                        item.classList.remove('active');
+                    });
+                    document.querySelector('.nav-item:nth-child(2)').classList.add('active');
+                });
+        }
+
+        // Show starred files
+        function showStarred() {
+            // This would be implemented with backend support
+            alert('Starred files feature coming soon!');
+        }
+
+        // Show trash
+        function showTrash() {
+            // This would be implemented with backend support
+            alert('Trash feature coming soon!');
+        }
     </script>
 </body>
 </html>
