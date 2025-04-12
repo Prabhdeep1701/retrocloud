@@ -24,21 +24,21 @@
 }
 
 .dark-mode {
-    /* Updated color palette - Dark mode */
-    --bg-primary: #000000; /* Black */
-    --bg-secondary: #212121; /* Dark gray */
-    --bg-accent: #00BFA5; /* Teal */
-    --text-primary: #ffffff;
-    --text-secondary: #cccccc;
-    --border-color: #ffffff;
-    --shadow-color: rgba(0, 191, 165, 0.5); /* Teal shadow */
-    --accent-color: #00BFA5; /* Teal */
-    --accent-secondary: #1DE9B6; /* Mint green */
-    --folder-color: #1DE9B6; /* Mint green */
-    --file-color: #212121; /* Dark gray */
+    /* Updated color palette - Dark mode with new colors */
+    --bg-primary: #0A1929; /* Dark navy blue */
+    --bg-secondary: #051E34; /* Darker navy blue */
+    --bg-accent: #FF6B2B; /* Orange */
+    --text-primary: #ffffff; /* White */
+    --text-secondary: #cccccc; /* Light gray */
+    --border-color: #FF6B2B; /* Orange border */
+    --shadow-color: rgba(255, 107, 43, 0.5); /* Orange shadow */
+    --accent-color: #FF6B2B; /* Orange */
+    --accent-secondary: #FF8F59; /* Lighter orange */
+    --folder-color: #FF6B2B; /* Orange */
+    --file-color: #051E34; /* Darker navy blue */
     --shadow-offset: 5px;
-    --gradient-start: #00BFA5; /* Teal */
-    --gradient-end: #1DE9B6; /* Mint green */
+    --gradient-start: #FF6B2B; /* Orange */
+    --gradient-end: #FF8F59; /* Lighter orange */
 }
 
 body {
