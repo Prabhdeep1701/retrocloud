@@ -1,0 +1,79 @@
+/* Content area */
+.content {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+    background-color: var(--bg-primary);
+}
+
+.toolbar {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 30px;
+}
+
+.upload-btn {
+    background: linear-gradient(135deg, var(--accent-color), var(--accent-secondary));
+    color: white;
+    border: 3px solid var(--border-color);
+    padding: 10px 20px;
+    cursor: pointer;
+    font-weight: bold;
+    box-shadow: var(--shadow-offset) var(--shadow-offset) 0 var(--shadow-color);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.upload-btn:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: calc(var(--shadow-offset) + 2px) calc(var(--shadow-offset) + 2px) 0 var(--shadow-color);
+}
+
+.upload-btn:active {
+    transform: translate(2px, 2px);
+    box-shadow: calc(var(--shadow-offset) - 2px) calc(var(--shadow-offset) - 2px) 0 var(--shadow-color);
+}
+
+.view-options {
+    display: flex;
+    gap: 15px;
+}
+
+.view-options button {
+    background-color: var(--bg-secondary);
+    border: 3px solid var(--border-color);
+    color: var(--text-primary);
+    cursor: pointer;
+    padding: 10px;
+    box-shadow: var(--shadow-offset) var(--shadow-offset) 0 var(--shadow-color);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.view-options button:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: calc(var(--shadow-offset) + 2px) calc(var(--shadow-offset) + 2px) 0 var(--shadow-color);
+}
+
+.view-options button:active {
+    transform: translate(2px, 2px);
+    box-shadow: calc(var(--shadow-offset) - 2px) calc(var(--shadow-offset) - 2px) 0 var(--shadow-color);
+}
+
+.path-nav {
+    margin-bottom: 25px;
+    padding: 15px;
+    background-color: var(--bg-secondary);
+    border: 3px solid var(--border-color);
+    box-shadow: var(--shadow-offset) var(--shadow-offset) 0 var(--shadow-color);
+}
+
+.path-nav a {
+    color: var(--text-primary);
+    text-decoration: none;
+    font-weight: bold;
+    padding: 5px;
+}
+
+.path-nav a:hover {
+    background-color: var(--accent-color);
+    color: white;
+}

@@ -1,0 +1,83 @@
+/* Base styles with neobrutalism theme */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    /* Updated color palette - Light mode */
+    --bg-primary: #ffffff;
+    --bg-secondary: #f0f7ff;
+    --bg-accent: #00BFA5; /* Teal color */
+    --text-primary: #000000;
+    --text-secondary: #333333;
+    --border-color: #000000;
+    --shadow-color: rgba(0, 191, 165, 0.5); /* Teal shadow */
+    --accent-color: #00BFA5; /* Teal */
+    --accent-secondary: #1DE9B6; /* Mint green */
+    --folder-color: #1DE9B6; /* Mint green */
+    --file-color: #ffffff;
+    --shadow-offset: 5px;
+    --gradient-start: #00BFA5; /* Teal */
+    --gradient-end: #1DE9B6; /* Mint green */
+}
+
+.dark-mode {
+    /* Updated color palette - Dark mode */
+    --bg-primary: #000000; /* Black */
+    --bg-secondary: #212121; /* Dark gray */
+    --bg-accent: #00BFA5; /* Teal */
+    --text-primary: #ffffff;
+    --text-secondary: #cccccc;
+    --border-color: #ffffff;
+    --shadow-color: rgba(0, 191, 165, 0.5); /* Teal shadow */
+    --accent-color: #00BFA5; /* Teal */
+    --accent-secondary: #1DE9B6; /* Mint green */
+    --folder-color: #1DE9B6; /* Mint green */
+    --file-color: #212121; /* Dark gray */
+    --shadow-offset: 5px;
+    --gradient-start: #00BFA5; /* Teal */
+    --gradient-end: #1DE9B6; /* Mint green */
+}
+
+body {
+    font-family: 'Inter', 'Helvetica', sans-serif;
+    color: var(--text-primary);
+    background-color: var(--bg-primary);
+    line-height: 1.6;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+/* Neobrutalism box style */
+.neo-box {
+    border: 3px solid var(--border-color);
+    box-shadow: var(--shadow-offset) var(--shadow-offset) 0 var(--shadow-color);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.neo-box:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: calc(var(--shadow-offset) + 2px) calc(var(--shadow-offset) + 2px) 0 var(--shadow-color);
+}
+
+.neo-button {
+    background-color: var(--bg-accent);
+    border: 3px solid var(--border-color);
+    color: var(--text-primary);
+    font-weight: bold;
+    padding: 8px 16px;
+    cursor: pointer;
+    box-shadow: var(--shadow-offset) var(--shadow-offset) 0 var(--shadow-color);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.neo-button:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: calc(var(--shadow-offset) + 2px) calc(var(--shadow-offset) + 2px) 0 var(--shadow-color);
+}
+
+.neo-button:active {
+    transform: translate(2px, 2px);
+    box-shadow: calc(var(--shadow-offset) - 2px) calc(var(--shadow-offset) - 2px) 0 var(--shadow-color);
+}
