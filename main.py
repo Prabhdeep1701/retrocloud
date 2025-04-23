@@ -1,4 +1,4 @@
-from flask import Flask, request, send_from_directory, jsonify, send_file, render_template
+from flask import Flask, request, send_from_directory, jsonify, send_file, render_template, redirect, url_for, session, flash
 import os
 from pathlib import Path
 from flask_cors import CORS
@@ -6,9 +6,26 @@ from werkzeug.utils import secure_filename
 from pyngrok import ngrok 
 import shutil
 import time
+from werkzeug.security import generate_password_hash, check_password_hash
+import sqlite3
+from functools import wraps
 
 app = Flask(__name__, static_folder='static')
+app.secret_key = 'your-secret-key-here'  # Change this to a random secret key
 CORS(app)
+
+# Initialize database
+def init_db():
+    conn = sqlite3.connect('users.db')
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS users
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                 username TEXT UNIQUE NOT NULL,
+                 password TEXT NOT NULL)''')
+    conn.commit()
+    conn.close()
+
+init_db()
 
 ROOT_DIR = os.path.abspath("shared")
 
@@ -17,10 +34,71 @@ if not os.path.exists(ROOT_DIR):
 
 @app.route("/")
 def index():
+    if 'username' not in session:
+        return redirect(url_for('login'))
     return render_template("index.html")
 
+@app.route('/signup', methods=['GET', 'POST'])
+def signup():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        
+        if not username or not password:
+            flash('Username and password are required')
+            return redirect(url_for('signup'))
+            
+        try:
+            hashed_password = generate_password_hash(password, method='scrypt')
+            conn = sqlite3.connect('users.db')
+            c = conn.cursor()
+            c.execute("INSERT INTO users (username, password) VALUES (?, ?)",
+                     (username, hashed_password))
+            conn.commit()
+            conn.close()
+            flash('Registration successful! Please login.')
+            return redirect(url_for('login'))
+        except sqlite3.IntegrityError:
+            flash('Username already exists')
+            return redirect(url_for('signup'))
+            
+    return render_template('signup.html')
 
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        
+        conn = sqlite3.connect('users.db')
+        c = conn.cursor()
+        c.execute("SELECT password FROM users WHERE username = ?", (username,))
+        user = c.fetchone()
+        conn.close()
+        
+        if user and check_password_hash(user[0], password):
+            session['username'] = username
+            return redirect(url_for('index'))
+        flash('Invalid username or password')
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.pop('username', None)
+    return redirect(url_for('login'))
+
+# Add this decorator to all routes that need authentication
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'username' not in session:
+            return redirect(url_for('login', next=request.url))
+        return f(*args, **kwargs)
+    return decorated_function
+
+# Protect existing routes by adding @login_required decorator
 @app.route("/browse")
+@login_required
 def browse():
     rel_path = request.args.get("path", "")
     abs_path = os.path.abspath(os.path.join(ROOT_DIR, rel_path))
@@ -42,6 +120,7 @@ def browse():
     })
 
 @app.route("/download")
+@login_required
 def download():
     rel_path = request.args.get("path", "")
     abs_path = os.path.abspath(os.path.join(ROOT_DIR, rel_path))

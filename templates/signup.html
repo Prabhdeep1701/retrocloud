@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Sign Up - Retrocloud</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/layout.css') }}">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        .signup-container {
+            max-width: 400px;
+            margin: 50px auto;
+            padding: 30px;
+            background-color: var(--bg-primary);
+            border: 3px solid var(--border-color);
+            box-shadow: var(--shadow-offset) var(--shadow-offset) 0 var(--shadow-color);
+        }
+        .signup-container h2 {
+            text-align: center;
+            margin-bottom: 25px;
+            color: var(--text-primary);
+            text-shadow: 2px 2px 0 var(--shadow-color);
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: var(--text-primary);
+        }
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--bg-secondary);
+            border: 3px solid var(--border-color);
+            color: var(--text-primary);
+            box-shadow: var(--shadow-offset) var(--shadow-offset) 0 var(--shadow-color);
+        }
+        button[type="submit"] {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--accent-color);
+            border: 3px solid var(--border-color);
+            color: var(--text-primary);
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: var(--shadow-offset) var(--shadow-offset) 0 var(--shadow-color);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        button[type="submit"]:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: calc(var(--shadow-offset) + 2px) calc(var(--shadow-offset) + 2px) 0 var(--shadow-color);
+        }
+        .login-link {
+            margin-top: 20px;
+            text-align: center;
+        }
+        .login-link a {
+            color: var(--accent-color);
+            font-weight: bold;
+            text-decoration: none;
+        }
+        .flash-message {
+            color: var(--accent-color);
+            text-align: center;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="signup-container">
+        <h2><i class="fas fa-user-plus"></i> Sign Up</h2>
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="flash-message">{{ messages[0] }}</div>
+            {% endif %}
+        {% endwith %}
+        <form method="POST" action="/signup">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            <div class="form-group">
+                <label for="confirm_password">Confirm Password</label>
+                <input type="password" id="confirm_password" name="confirm_password" required>
+            </div>
+            <button type="submit">Create Account</button>
+        </form>
+        <div class="login-link">
+            Already have an account? <a href="{{ url_for('login') }}">Login</a>
+        </div>
+    </div>
+</body>
+</html>
