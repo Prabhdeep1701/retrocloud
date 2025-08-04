@@ -27,10 +27,29 @@ def init_db():
 
 init_db()
 
-ROOT_DIR = os.path.abspath("shared")
+SHARED_DIR = os.path.abspath("shared")
+if not os.path.exists(SHARED_DIR):
+    os.makedirs(SHARED_DIR)
 
-if not os.path.exists(ROOT_DIR):
-    os.makedirs(ROOT_DIR)
+def get_root_dir():
+    mode = session.get("root_mode", "shared")
+    if mode == "full":
+        if os.name == "nt":  # Windows
+            # Return list of drives (C:\, D:\, etc.)
+            # For simplicity, use C:\ as root
+            return "C:\\"
+        else:
+            return "/"
+    else:
+        return SHARED_DIR
+
+@app.route("/set_root")
+def set_root():
+    mode = request.args.get("mode", "shared")
+    if mode not in ["shared", "full"]:
+        return jsonify({"error": "Invalid mode"}), 400
+    session["root_mode"] = mode
+    return jsonify({"success": True, "mode": mode})
 
 @app.route("/")
 def index():
@@ -101,21 +120,22 @@ def login_required(f):
 @login_required
 def browse():
     rel_path = request.args.get("path", "")
-    abs_path = os.path.abspath(os.path.join(ROOT_DIR, rel_path))
+    root_dir = get_root_dir()
+    abs_path = os.path.abspath(os.path.join(root_dir, rel_path))
 
-    if not abs_path.startswith(ROOT_DIR):
+    if not abs_path.startswith(root_dir):
         return jsonify({"error": "Invalid path"}), 403
 
     contents = []
     for entry in os.scandir(abs_path):
         contents.append({
             "name": entry.name,
-            "path": os.path.relpath(entry.path, ROOT_DIR),
+            "path": os.path.relpath(entry.path, root_dir),
             "is_dir": entry.is_dir()
         })
 
     return jsonify({
-        "current_path": os.path.relpath(abs_path, ROOT_DIR),
+        "current_path": os.path.relpath(abs_path, root_dir),
         "contents": contents
     })
 
@@ -123,9 +143,10 @@ def browse():
 @login_required
 def download():
     rel_path = request.args.get("path", "")
-    abs_path = os.path.abspath(os.path.join(ROOT_DIR, rel_path))
+    root_dir = get_root_dir()
+    abs_path = os.path.abspath(os.path.join(root_dir, rel_path))
 
-    if not abs_path.startswith(ROOT_DIR) or not os.path.isfile(abs_path):
+    if not abs_path.startswith(root_dir) or not os.path.isfile(abs_path):
         return "File not found", 404
 
     return send_file(abs_path, as_attachment=True)
@@ -134,9 +155,10 @@ def download():
 def upload():
     files = request.files.getlist("file")
     current_path = request.form.get("current_path", "")
-    upload_dir = os.path.join(ROOT_DIR, current_path)
+    root_dir = get_root_dir()
+    upload_dir = os.path.join(root_dir, current_path)
     
-    if not os.path.abspath(upload_dir).startswith(ROOT_DIR):
+    if not os.path.abspath(upload_dir).startswith(root_dir):
         return jsonify({"error": "Invalid path"}), 403
         
     for file in files:
@@ -149,26 +171,27 @@ def upload():
 @app.route("/delete", methods=["DELETE"])
 def delete_file():
     rel_path = request.args.get("path", "")
-    abs_path = os.path.abspath(os.path.join(ROOT_DIR, rel_path))
+    root_dir = get_root_dir()
+    abs_path = os.path.abspath(os.path.join(root_dir, rel_path))
 
-    if not abs_path.startswith(ROOT_DIR):
-        return "Invalid path", 403
+    if not abs_path.startswith(root_dir):
+        return jsonify({"error": "Invalid path"}), 403
 
     try:
         if os.path.isfile(abs_path):
             os.remove(abs_path)
         elif os.path.isdir(abs_path):
             shutil.rmtree(abs_path)
-        return "Item deleted", 200
+        return jsonify({"success": True})
     except Exception as e:
-        return str(e), 500
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/create-folder", methods=["POST"])
 def create_folder():
     data = request.json
-    folder_path = os.path.join(ROOT_DIR, data.get('path', ''), data.get('name', ''))
+    folder_path = os.path.join(get_root_dir(), data.get('path', ''), data.get('name', ''))
     
-    if not os.path.abspath(folder_path).startswith(ROOT_DIR):
+    if not os.path.abspath(folder_path).startswith(get_root_dir()):
         return jsonify({"error": "Invalid path"}), 403
         
     try:
@@ -180,7 +203,8 @@ def create_folder():
 @app.route("/storage-info")
 def storage_info():
     total_size = 0
-    for dirpath, dirnames, filenames in os.walk(ROOT_DIR):
+    root_dir = get_root_dir()
+    for dirpath, dirnames, filenames in os.walk(root_dir):
         for f in filenames:
             fp = os.path.join(dirpath, f)
             total_size += os.path.getsize(fp)
@@ -196,13 +220,14 @@ def storage_info():
 @app.route("/preview")
 def preview_file():
     rel_path = request.args.get("path", "")
-    abs_path = os.path.abspath(os.path.join(ROOT_DIR, rel_path))
+    root_dir = get_root_dir()
+    abs_path = os.path.abspath(os.path.join(root_dir, rel_path))
 
-    if not abs_path.startswith(ROOT_DIR) or not os.path.isfile(abs_path):
+    if not abs_path.startswith(root_dir) or not os.path.isfile(abs_path):
         return "File not found", 404
 
     try:
-        with open(abs_path, 'r') as file:
+        with open(abs_path, 'r', encoding="utf-8") as file:
             content = file.read()
         return content
     except:
@@ -210,11 +235,12 @@ def preview_file():
 
 @app.route("/recent")
 def recent_files():
+    root_dir = get_root_dir()
     files = []
-    for dirpath, dirnames, filenames in os.walk(ROOT_DIR):
+    for dirpath, dirnames, filenames in os.walk(root_dir):
         for f in filenames:
             fp = os.path.join(dirpath, f)
-            rel_path = os.path.relpath(fp, ROOT_DIR)
+            rel_path = os.path.relpath(fp, root_dir)
             files.append({
                 "name": f,
                 "path": rel_path,

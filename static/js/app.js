@@ -19,6 +19,25 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Setup event listeners
     setupEventListeners();
+
+    fetch('/set_root') // Get current mode (will default to shared)
+        .then(res => res.json())
+        .then(data => {
+            if (data.mode) {
+                document.getElementById('rootModeSelect').value = data.mode;
+            }
+        })
+        .catch(() => {});
+
+    document.getElementById('rootModeSelect').addEventListener('change', function() {
+        const mode = this.value;
+        fetch(`/set_root?mode=${mode}`)
+            .then(res => res.json())
+            .then(() => {
+                fetchFiles("");
+                calculateStorage();
+            });
+    });
 });
 
 // Setup all event listeners

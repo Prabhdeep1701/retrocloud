@@ -81,3 +81,47 @@ body {
     transform: translate(2px, 2px);
     box-shadow: calc(var(--shadow-offset) - 2px) calc(var(--shadow-offset) - 2px) 0 var(--shadow-color);
 }
+
+.root-toggle {
+    display: flex;
+    align-items: center;
+    margin-left: 20px;
+    gap: 6px;
+    font-family: 'VT323', 'Fira Mono', 'Consolas', monospace;
+    font-size: 1.1em;
+    background: none;
+}
+
+.root-toggle label {
+    font-weight: bold;
+    letter-spacing: 1px;
+    color: var(--text-primary);
+    text-shadow: 1px 1px 0 var(--border-color);
+}
+
+.root-toggle select {
+    font-family: 'VT323', 'Fira Mono', 'Consolas', monospace;
+    font-size: 1.1em;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 3px solid var(--border-color);
+    box-shadow: var(--shadow-offset) var(--shadow-offset) 0 var(--shadow-color);
+    padding: 4px 18px 4px 8px;
+    border-radius: 0;
+    outline: none;
+    font-weight: bold;
+    transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
+    appearance: none;
+    cursor: pointer;
+    margin-left: 2px;
+}
+
+.root-toggle select:hover, .root-toggle select:focus {
+    background: var(--accent-secondary);
+    color: var(--text-primary);
+    transform: translate(-2px, -2px);
+    box-shadow: calc(var(--shadow-offset) + 2px) calc(var(--shadow-offset) + 2px) 0 var(--shadow-color);
+}
+
+/* Add a retro pixel font if available */
+@import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
